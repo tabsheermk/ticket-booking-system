@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from backendApp.serializers import MovieSerializer
+from backendApp.serializers import MovieSerializer, ShowSerializer
 from .models import Movie, Show, Booking
 from .serializers import RegisterSerializer
 
@@ -42,4 +42,26 @@ def movies_list(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST'])
+def shows_list(request, movie_id):
+    """
+    List all shows for a movie, or create a new show
+    """
+    movie = Movie.objects.filter(id=movie_id)
+    if not movie:
+        return Response({"message": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        shows = Show.objects.filter(movie_id=movie_id)
+        serializer = ShowSerializer(shows, many=True)
+        return Response(serializer.data)
+    elif request.method == 'POST':
+        serializer = ShowSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(movie_id=movie_id)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
