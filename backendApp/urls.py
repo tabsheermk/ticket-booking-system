@@ -20,7 +20,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView
 )
-from backendApp.views import movies_list, shows_list
+from backendApp.views import book_seat, movies_list, shows_list
 from .views import RegisterView;
  
 urlpatterns = [
@@ -29,5 +29,6 @@ urlpatterns = [
     path('api/user/login/', TokenObtainPairView.as_view(), name="login_user"),
     path('api/token/refresh/', TokenRefreshView.as_view(), name="token_refresh"),
     path('api/movies/', movies_list, name="list_create_movies"),
-    path('api/movies/<int:movie_id>/shows/', shows_list, name="list_create_shows")
+    path('api/movies/<int:movie_id>/shows/', shows_list, name="list_create_shows"),
+    path('api/shows/<int:show_id>/book/', book_seat, name="book_seat")
 ]

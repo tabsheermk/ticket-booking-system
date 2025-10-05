@@ -1,9 +1,10 @@
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from backendApp.serializers import MovieSerializer, ShowSerializer
+from backendApp.serializers import BookingSerializer, MovieSerializer, ShowSerializer
 from .models import Movie, Show, Booking
 from .serializers import RegisterSerializer
 
@@ -64,4 +65,26 @@ def shows_list(request, movie_id):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+def book_seat(request, show_id):
+    """
+    Book a ticket on an available show
+    """
+    show = Show.objects.filter(id=show_id)
+    if not show:
+        return Response({"message": "Show not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    seat_number = request.data.get('seat_number')
+    booking = Booking.objects.filter(seat_number=seat_number)
+
+    if booking:
+        return Response({"message": "Seat is already occupied"}, status=status.HTTP_403_FORBIDDEN)
+
+    data = request.data.copy()
+    data['status'] = 'booked'
+    data['created_at'] = timezone.now()
+    serializer = BookingSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save(show_id=show_id, user_id=1)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
