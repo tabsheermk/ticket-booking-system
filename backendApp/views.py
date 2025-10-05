@@ -75,7 +75,8 @@ def book_seat(request, show_id):
         return Response({"message": "Show not found"}, status=status.HTTP_404_NOT_FOUND)
 
     seat_number = request.data.get('seat_number')
-    booking = Booking.objects.filter(seat_number=seat_number)
+
+    booking = Booking.objects.filter(show_id=show_id, seat_number=seat_number, status='booked').exists()
 
     if booking:
         return Response({"message": "Seat is already occupied"}, status=status.HTTP_403_FORBIDDEN)
@@ -88,3 +89,15 @@ def book_seat(request, show_id):
         serializer.save(show_id=show_id, user_id=1)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def cancel_booking(request, booking_id):
+    """
+    Cancel a booking
+    """
+    booking = Booking.objects.filter(id=booking_id).exists()
+    if not booking:
+        return Response({"message": "You can't cancel seat which is not been booked"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # will continue with the rest later
+    
