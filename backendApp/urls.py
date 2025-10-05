@@ -20,11 +20,14 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView
 )
+from backendApp.views import movies_list
 from .views import RegisterView;
  
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/user/signup/', RegisterView.as_view(), name="signup_user"),
     path('api/user/login/', TokenObtainPairView.as_view(), name="login_user"),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name="token_refresh")
+    path('api/token/refresh/', TokenRefreshView.as_view(), name="token_refresh"),
+    path('api/movies/', movies_list, name="list_create_movies")
+
 ]
