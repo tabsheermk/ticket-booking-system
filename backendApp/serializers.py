@@ -35,3 +35,7 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = ['id', 'user', 'show', 'seat_number', 'status', 'created_at']
 
+class AuthErrorSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    code = serializers.CharField(required=False)
+    messages = serializers.ListField(child=serializers.DictField(), required=False)

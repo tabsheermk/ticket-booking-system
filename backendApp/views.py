@@ -8,8 +8,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+
 from .models import Movie, Show, Booking
-from .serializers import RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
+from .serializers import AuthErrorSerializer, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
 
 
 # -------------------------------
@@ -39,6 +41,36 @@ class RegisterView(generics.CreateAPIView):
 # -------------------------------
 # Movies Endpoints
 # -------------------------------
+@extend_schema(
+    methods=['GET'],
+    responses={
+        200: OpenApiResponse(
+            response=MovieSerializer,
+            description="Fetch all movies",
+            examples=[
+                OpenApiExample(
+                    name="Sample Movie",
+                    value=[
+                        {
+                            "id": 1,
+                            "title": "Godfather",
+                            "duration_minutes": 121
+                        }
+                    ],
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
+@extend_schema(
+    methods=['POST'],
+    request=MovieSerializer,
+    responses={
+        201: MovieSerializer,
+        400: OpenApiResponse(description="Invalid input data")
+    }
+)
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def movies_list(request):
@@ -183,7 +215,66 @@ def cancel_booking(request, booking_id):
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+@extend_schema(
+    responses={
+        200: OpenApiResponse(
+            response=BookingSerializer,
+            description="Fetch all bookings of the logged-in user",
+            examples=[
+                OpenApiExample(
+                    name="Sample Bookings Response",
+                    value=[
+                        {
+                            "id": 6,
+                            "user": "tabsheer",
+                            "show": {
+                                "id": 1,
+                                "movie": {
+                                    "id": 1,
+                                    "title": "Godfather",
+                                    "duration_minutes": 121
+                                },
+                                "screen_name": "PVR Cinemas",
+                                "date_time": "2025-10-05T14:30:00Z",
+                                "total_seats": 300
+                            },
+                            "seat_number": 2,
+                            "status": "cancelled",
+                            "created_at": "2025-10-06T11:58:56.347252Z"
+                        }
+                    ],
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer, 
+            description="Authentication failed",
+            examples=[
+                OpenApiExample(
+                    name="No Credentials",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_bookings(request):
