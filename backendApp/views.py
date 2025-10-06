@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from .models import Movie, Show, Booking
-from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, GenericError, InvalidShowCreationRequest, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
+from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, GenericError, InvalidMovieCreationRequest, InvalidShowCreationRequest, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
 
 
 # -------------------------------
@@ -43,20 +43,52 @@ class RegisterView(generics.CreateAPIView):
 # -------------------------------
 @extend_schema(
     methods=['GET'],
+    description="Retrieve all movies available.",
     responses={
         200: OpenApiResponse(
-            response=MovieSerializer,
-            description="Fetch all movies",
-    examples=[
-    OpenApiExample(
-                    name="Sample Movie",
+            response=MovieSerializer(many=True),
+            description="List of movies",
+            examples=[
+                OpenApiExample(
+                    name="Movies List Example",
                     value=[
                         {
                             "id": 1,
                             "title": "Godfather",
                             "duration_minutes": 121
+                        },
+                        {
+                            "id": 2,
+                            "title": "Inception",
+                            "duration_minutes": 148
                         }
                     ],
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication required or token invalid",
+            examples=[
+                OpenApiExample(
+                    name="No Auth Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
                     response_only=True
                 )
             ]
@@ -66,9 +98,80 @@ class RegisterView(generics.CreateAPIView):
 @extend_schema(
     methods=['POST'],
     request=MovieSerializer,
+    description="Create a new movie.",
+    examples=[
+        OpenApiExample(
+            name="Create Movie Example",
+            value={
+                "title": "Interstellar",
+                "duration_minutes": 169
+            },
+            request_only=True
+        )
+    ],
     responses={
-        201: MovieSerializer,
-        400: OpenApiResponse(description="Invalid input data")
+        201: OpenApiResponse(
+            response=MovieSerializer,
+            description="Movie created successfully",
+            examples=[
+                OpenApiExample(
+                    name="Created Movie Example",
+                    value={
+                        "id": 3,
+                        "title": "Interstellar",
+                        "duration_minutes": 169
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            response=InvalidMovieCreationRequest,
+            description="Invalid input data",
+            examples=[
+                OpenApiExample(
+                    name="Missing Fields Example",
+                    value={
+                        "title": ["This field is required."],
+                        "duration_minutes": ["This field is required."]
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Field Example",
+                    value={
+                        "duration_minutes": ["A valid integer is required."]
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication required or token invalid",
+            examples=[
+                OpenApiExample(
+                    name="No Auth Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
     }
 )
 @api_view(['GET', 'POST'])

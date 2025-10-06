@@ -50,3 +50,7 @@ class InvalidShowCreationRequest(serializers.Serializer):
     screen_name = serializers.ListField()
     date_time = serializers.ListField()
     total_seats = serializers.ListField()
+
+class InvalidMovieCreationRequest(serializers.Serializer):
+    duration_minutes = serializers.IntegerField()
+    title = serializers.CharField()
