@@ -1,7 +1,8 @@
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
 from backendApp.serializers import BookingSerializer, MovieSerializer, ShowSerializer
@@ -29,6 +30,7 @@ class RegisterView(generics.CreateAPIView):
         )
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def movies_list(request):
     """
     List all movies, or create a new movie
@@ -46,6 +48,7 @@ def movies_list(request):
 
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def shows_list(request, movie_id):
     """
     List all shows for a movie, or create a new show
@@ -66,6 +69,7 @@ def shows_list(request, movie_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def book_seat(request, show_id):
     """
     Book a ticket on an available show
@@ -91,6 +95,7 @@ def book_seat(request, show_id):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def cancel_booking(request, booking_id):
     """
     Cancel a booking
