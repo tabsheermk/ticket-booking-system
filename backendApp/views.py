@@ -1,15 +1,20 @@
 from django.utils import timezone
+from django.forms.models import model_to_dict
+from django.contrib.auth.models import User
+
 from rest_framework import generics, status
-from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
-from backendApp.serializers import BookingSerializer, MovieSerializer, ShowSerializer
-from .models import Movie, Show, Booking
-from .serializers import RegisterSerializer
-from django.forms.models import model_to_dict
 
+from .models import Movie, Show, Booking
+from .serializers import RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
+
+
+# -------------------------------
+# User Registration
+# -------------------------------
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
@@ -30,6 +35,10 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED
         )
 
+
+# -------------------------------
+# Movies Endpoints
+# -------------------------------
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def movies_list(request):
@@ -40,14 +49,18 @@ def movies_list(request):
         movies = Movie.objects.all()
         serializer = MovieSerializer(movies, many=True)
         return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = MovieSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = MovieSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# -------------------------------
+# Shows Endpoints
+# -------------------------------
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def shows_list(request, movie_id):
@@ -62,13 +75,18 @@ def shows_list(request, movie_id):
         shows = Show.objects.filter(movie_id=movie_id)
         serializer = ShowSerializer(shows, many=True)
         return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = ShowSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(movie_id=movie_id)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = ShowSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(movie_id=movie_id)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# -------------------------------
+# Bookings Endpoints
+# -------------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def book_seat(request, show_id):
@@ -82,17 +100,19 @@ def book_seat(request, show_id):
     seat_number = request.data.get('seat_number')
 
     if seat_number > show.total_seats or seat_number < 1:
-        return Response({"message": f"Seat number should be between 1 and {show.total_seats}"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": f"Seat number should be between 1 and {show.total_seats}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     booking = Booking.objects.get(show_id=show_id, seat_number=seat_number)
 
     if booking and str(booking.status) == "booked":
         return Response({"message": "Seat is already occupied"}, status=status.HTTP_403_FORBIDDEN)
 
-    # existing booking that had been cancelled
+    # Existing cancelled booking
     if booking and str(booking.status) == "cancelled":
         updated = booking
-        
         updated.status = "booked"
         updated.created_at = timezone.now()
         updated.user = request.user
@@ -107,8 +127,7 @@ def book_seat(request, show_id):
             serializer.save(show_id=show_id, user_id=user_id)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-    # new booking    
+    # New booking    
     data = request.data.copy()
     data['status'] = 'booked'
     data['created_at'] = timezone.now()
@@ -121,7 +140,9 @@ def book_seat(request, show_id):
     if serializer.is_valid():
         serializer.save(show_id=show_id, user_id=user_id)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -131,14 +152,19 @@ def cancel_booking(request, booking_id):
     """
     booking_exists = Booking.objects.filter(id=booking_id).exists()
     if not booking_exists:
-        return Response({"message": "You can't cancel seat which is not been booked"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"message": "You can't cancel seat which is not been booked"},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     booking = Booking.objects.get(id=booking_id)
-       
     print(str(request.user), booking.user)
     
     if str(request.user) != str(booking.user):
-        return Response({"message": "You are not authorized to perform this action"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"message": "You are not authorized to perform this action"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     updated = booking
     updated.status = "cancelled"
@@ -153,6 +179,7 @@ def cancel_booking(request, booking_id):
     if serializer.is_valid():
         serializer.save(show_id=show_id, user_id=user_id)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -163,7 +190,6 @@ def get_bookings(request):
     Get all bookings of the currently logged in user
     """
     username = str(request.user)
-
     user = User.objects.get(username=username)
     user_id = user.id
 
@@ -171,15 +197,4 @@ def get_bookings(request):
     serializer = BookingSerializer(bookings, many=True)
     
     return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-    
-
-    
-
-    
-    
-
-    
-    
 
