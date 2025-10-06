@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -17,9 +17,14 @@ from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, Generic
 # -------------------------------
 # User Registration
 # -------------------------------
+@extend_schema(
+    description="Register a new user",
+    auth=None,  # <--- disables auth requirement in Swagger UI
+)
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
