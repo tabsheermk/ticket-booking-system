@@ -67,8 +67,9 @@ def shows_list(request, movie_id):
     """
     List all shows for a movie, or create a new show
     """
-    movie = Movie.objects.get(id=movie_id)
-    if not movie:
+    try:
+        movie = Movie.objects.get(id=movie_id)
+    except Movie.DoesNotExist:
         return Response({"message": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
@@ -93,8 +94,9 @@ def book_seat(request, show_id):
     """
     Book a ticket on an available show
     """
-    show = Show.objects.get(id=show_id)
-    if not show:
+    try:
+        show = Show.objects.get(id=show_id)
+    except Show.DoesNotExist:
         return Response({"message": "Show not found"}, status=status.HTTP_404_NOT_FOUND)
 
     seat_number = request.data.get('seat_number')
@@ -105,7 +107,11 @@ def book_seat(request, show_id):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    booking = Booking.objects.get(show_id=show_id, seat_number=seat_number)
+    try:
+        booking = Booking.objects.get(show_id=show_id, seat_number=seat_number)
+    except Booking.DoesNotExist:
+        booking = None
+
 
     if booking and str(booking.status) == "booked":
         return Response({"message": "Seat is already occupied"}, status=status.HTTP_403_FORBIDDEN)
@@ -120,8 +126,7 @@ def book_seat(request, show_id):
         updated_data = model_to_dict(updated)
         serializer = BookingSerializer(booking, data=updated_data, partial=True)
 
-        user = User.objects.get(username=booking.user)
-        user_id = user.id
+        user_id = booking.user.id
         
         if serializer.is_valid():
             serializer.save(show_id=show_id, user_id=user_id)
@@ -133,9 +138,7 @@ def book_seat(request, show_id):
     data['created_at'] = timezone.now()
     serializer = BookingSerializer(data=data)
 
-    username = str(request.user)
-    user = User.objects.get(username=username)
-    user_id = user.id
+    user_id = request.user.id
 
     if serializer.is_valid():
         serializer.save(show_id=show_id, user_id=user_id)
@@ -158,7 +161,6 @@ def cancel_booking(request, booking_id):
         )
 
     booking = Booking.objects.get(id=booking_id)
-    print(str(request.user), booking.user)
     
     if str(request.user) != str(booking.user):
         return Response(
@@ -172,8 +174,7 @@ def cancel_booking(request, booking_id):
     
     serializer = BookingSerializer(booking, data=updated_data, partial=True)
 
-    user = User.objects.get(username=booking.user)
-    user_id = user.id
+    user_id = request.user.id
     show_id = booking.show.id
 
     if serializer.is_valid():
@@ -189,9 +190,7 @@ def get_bookings(request):
     """
     Get all bookings of the currently logged in user
     """
-    username = str(request.user)
-    user = User.objects.get(username=username)
-    user_id = user.id
+    user_id = request.user.id
 
     bookings = Booking.objects.filter(user_id=user_id)
     serializer = BookingSerializer(bookings, many=True)
