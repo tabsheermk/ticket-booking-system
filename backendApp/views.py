@@ -54,7 +54,7 @@ def shows_list(request, movie_id):
     """
     List all shows for a movie, or create a new show
     """
-    movie = Movie.objects.filter(id=movie_id)
+    movie = Movie.objects.get(id=movie_id)
     if not movie:
         return Response({"message": "Movie not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -75,23 +75,51 @@ def book_seat(request, show_id):
     """
     Book a ticket on an available show
     """
-    show = Show.objects.filter(id=show_id)
+    show = Show.objects.get(id=show_id)
     if not show:
         return Response({"message": "Show not found"}, status=status.HTTP_404_NOT_FOUND)
 
     seat_number = request.data.get('seat_number')
 
-    booking = Booking.objects.filter(show_id=show_id, seat_number=seat_number, status='booked').exists()
+    if seat_number > show.total_seats or seat_number < 1:
+        return Response({"message": f"Seat number should be between 1 and {show.total_seats}"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if booking:
+    booking = Booking.objects.get(show_id=show_id, seat_number=seat_number)
+
+    if booking and str(booking.status) == "booked":
         return Response({"message": "Seat is already occupied"}, status=status.HTTP_403_FORBIDDEN)
 
+    # existing booking that had been cancelled
+    if booking and str(booking.status) == "cancelled":
+        updated = booking
+        
+        updated.status = "booked"
+        updated.created_at = timezone.now()
+        updated.user = request.user
+
+        updated_data = model_to_dict(updated)
+        serializer = BookingSerializer(booking, data=updated_data, partial=True)
+
+        user = User.objects.get(username=booking.user)
+        user_id = user.id
+        
+        if serializer.is_valid():
+            serializer.save(show_id=show_id, user_id=user_id)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    # new booking    
     data = request.data.copy()
     data['status'] = 'booked'
     data['created_at'] = timezone.now()
     serializer = BookingSerializer(data=data)
+
+    username = str(request.user)
+    user = User.objects.get(username=username)
+    user_id = user.id
+
     if serializer.is_valid():
-        serializer.save(show_id=show_id, user_id=2)
+        serializer.save(show_id=show_id, user_id=user_id)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
