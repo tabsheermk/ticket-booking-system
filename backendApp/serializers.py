@@ -45,3 +45,8 @@ class GenericError(serializers.Serializer):
 
 class BookSeatRequestSerializer(serializers.Serializer):
     seat_number = serializers.IntegerField()
+
+class InvalidShowCreationRequest(serializers.Serializer):
+    screen_name = serializers.ListField()
+    date_time = serializers.ListField()
+    total_seats = serializers.ListField()

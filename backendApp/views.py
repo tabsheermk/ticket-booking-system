@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from .models import Movie, Show, Booking
-from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, GenericError, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
+from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, GenericError, InvalidShowCreationRequest, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
 
 
 # -------------------------------
@@ -47,8 +47,8 @@ class RegisterView(generics.CreateAPIView):
         200: OpenApiResponse(
             response=MovieSerializer,
             description="Fetch all movies",
-            examples=[
-                OpenApiExample(
+    examples=[
+    OpenApiExample(
                     name="Sample Movie",
                     value=[
                         {
@@ -93,6 +93,168 @@ def movies_list(request):
 # -------------------------------
 # Shows Endpoints
 # -------------------------------
+@extend_schema(
+    methods=['GET'],
+    description="Retrieve all shows for a specific movie.",
+    responses={
+        200: OpenApiResponse(
+            response=ShowSerializer(many=True),
+            description="List of shows for the given movie",
+            examples=[
+                OpenApiExample(
+                    name="Shows List Example",
+                    value=[
+                        {
+                            "id": 1,
+                            "movie": {
+                                "id": 1,
+                                "title": "Godfather",
+                                "duration_minutes": 121
+                            },
+                            "screen_name": "PVR Cinemas",
+                            "date_time": "2025-10-05T14:30:00Z",
+                            "total_seats": 300
+                        }
+                    ],
+                    response_only=True
+                )
+            ]
+        ),
+        404: OpenApiResponse(
+            response=GenericError,
+            description="Movie not found",
+            examples=[OpenApiExample(
+                name="Movie Not Found",
+                value={"message": "Movie not found"},
+                response_only=True
+            )]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication required or token invalid",
+            examples=[
+                OpenApiExample(
+                    name="No Auth Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
+@extend_schema(
+    methods=['POST'],
+    request=ShowSerializer,
+    description="Create a new show for a given movie.",
+    examples=[
+        OpenApiExample(
+            name="Create Show Request Example",
+            value={
+                "screen_name": "PVR Cinemas",
+                "date_time": "2025-10-10T15:30:00Z",
+                "total_seats": 300
+            },
+            request_only=True
+        )
+    ],
+    responses={
+        201: OpenApiResponse(
+            response=ShowSerializer,
+            description="Show created successfully",
+            examples=[
+                OpenApiExample(
+                    name="Created Show Example",
+                    value={
+                        "id": 2,
+                        "movie": {
+                            "id": 1,
+                            "title": "Godfather",
+                            "duration_minutes": 121
+                        },
+                        "screen_name": "PVR Cinemas",
+                        "date_time": "2025-10-10T15:30:00Z",
+                        "total_seats": 300
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            response=InvalidShowCreationRequest,
+            description="Invalid input data",
+            examples=[
+                OpenApiExample(
+                    name="Missing Required Fields",
+                    value={
+                        "screen_name": ["This field is required."],
+                        "date_time": ["This field is required."],
+                        "total_seats": ["This field is required."]
+                    },
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Field",
+                    value={
+                        "total_seats": ["A valid integer is required."]
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        404: OpenApiResponse(
+            response=GenericError,
+            description="Movie not found",
+            examples=[
+                OpenApiExample(
+                    name="Movie Not Found",
+                    value={"message": "Movie not found"},
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication required or token invalid",
+            examples=[
+                OpenApiExample(
+                    name="No Auth Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def shows_list(request, movie_id):
@@ -121,6 +283,15 @@ def shows_list(request, movie_id):
     methods=['POST'],
     description="Book a ticket for a show. If the seat was previously cancelled, it will be re-booked.",
     request=BookSeatRequestSerializer,
+    examples= [
+        OpenApiExample(
+            name="Book Seat Request Example",
+            value={
+                "seat_number": 10,
+            },
+            request_only=True
+        )
+    ],
     responses={
         201: OpenApiResponse(
             response=BookingSerializer,
