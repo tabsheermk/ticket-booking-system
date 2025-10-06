@@ -128,9 +128,26 @@ def cancel_booking(request, booking_id):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_bookings(request):
+    """
+    Get all bookings of the currently logged in user
+    """
+    username = str(request.user)
+
+    user = User.objects.get(username=username)
+    user_id = user.id
+
+    bookings = Booking.objects.filter(user_id=user_id)
+    serializer = BookingSerializer(bookings, many=True)
+    
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     
 
+    
 
     
     
