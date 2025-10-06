@@ -20,9 +20,13 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView
 )
-from backendApp.views import book_seat, movies_list, shows_list
-from .views import RegisterView, cancel_booking, get_bookings; 
- 
+from backendApp.views import book_seat, movies_list, shows_list, RegisterView, cancel_booking, get_bookings 
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView
+)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/user/signup/', RegisterView.as_view(), name="signup_user"),
@@ -32,5 +36,9 @@ urlpatterns = [
     path('api/movies/<int:movie_id>/shows/', shows_list, name="list_create_shows"),
     path('api/shows/<int:show_id>/book/', book_seat, name="book_seat"),
     path('api/bookings/<int:booking_id>/cancel/', cancel_booking, name ="cancel_booking"),
-    path('api/my-bookings', get_bookings, name="get_my_bookings")
+    path('api/my-bookings', get_bookings, name="get_my_bookings"),
+
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
