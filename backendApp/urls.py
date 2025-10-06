@@ -21,7 +21,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView
 )
 from backendApp.views import book_seat, movies_list, shows_list
-from .views import RegisterView;
+from .views import RegisterView, cancel_booking; 
  
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name="token_refresh"),
     path('api/movies/', movies_list, name="list_create_movies"),
     path('api/movies/<int:movie_id>/shows/', shows_list, name="list_create_shows"),
-    path('api/shows/<int:show_id>/book/', book_seat, name="book_seat")
+    path('api/shows/<int:show_id>/book/', book_seat, name="book_seat"),
+    path('api/bookings/<int:booking_id>/cancel/', cancel_booking, name ="cancel_booking")
 ]

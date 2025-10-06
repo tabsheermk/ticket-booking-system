@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from backendApp.serializers import BookingSerializer, MovieSerializer, ShowSerializer
 from .models import Movie, Show, Booking
 from .serializers import RegisterSerializer
+from django.forms.models import model_to_dict
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -90,7 +91,7 @@ def book_seat(request, show_id):
     data['created_at'] = timezone.now()
     serializer = BookingSerializer(data=data)
     if serializer.is_valid():
-        serializer.save(show_id=show_id, user_id=1)
+        serializer.save(show_id=show_id, user_id=2)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -100,9 +101,40 @@ def cancel_booking(request, booking_id):
     """
     Cancel a booking
     """
-    booking = Booking.objects.filter(id=booking_id).exists()
-    if not booking:
+    booking_exists = Booking.objects.filter(id=booking_id).exists()
+    if not booking_exists:
         return Response({"message": "You can't cancel seat which is not been booked"}, status=status.HTTP_404_NOT_FOUND)
+
+    booking = Booking.objects.get(id=booking_id)
+       
+    print(str(request.user), booking.user)
     
-    # will continue with the rest later
+    if str(request.user) != str(booking.user):
+        return Response({"message": "You are not authorized to perform this action"}, status=status.HTTP_403_FORBIDDEN)
+
+    updated = booking
+    updated.status = "cancelled"
+    updated_data = model_to_dict(updated)
     
+    serializer = BookingSerializer(booking, data=updated_data, partial=True)
+
+    user = User.objects.get(username=booking.user)
+    user_id = user.id
+    show_id = booking.show.id
+
+    if serializer.is_valid():
+        serializer.save(show_id=show_id, user_id=user_id)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+    
+
+
+    
+    
+
+    
+    
+
