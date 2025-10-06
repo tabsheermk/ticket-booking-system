@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 
 from .models import Movie, Show, Booking
-from .serializers import AuthErrorSerializer, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
+from .serializers import AuthErrorSerializer, BookSeatRequestSerializer, GenericError, RegisterSerializer, MovieSerializer, ShowSerializer, BookingSerializer
 
 
 # -------------------------------
@@ -117,9 +117,128 @@ def shows_list(request, movie_id):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# -------------------------------
-# Bookings Endpoints
-# -------------------------------
+@extend_schema(
+    methods=['POST'],
+    description="Book a ticket for a show. If the seat was previously cancelled, it will be re-booked.",
+    request=BookSeatRequestSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=BookingSerializer,
+            description="Booking created successfully",
+            examples=[
+                OpenApiExample(
+                    name="New Booking",
+                    value={
+                        "id": 7,
+                        "user": "tabsheer",
+                        "show": {
+                            "id": 1,
+                            "movie": {
+                                "id": 1,
+                                "title": "Godfather",
+                                "duration_minutes": 121
+                            },
+                            "screen_name": "PVR Cinemas",
+                            "date_time": "2025-10-05T14:30:00Z",
+                            "total_seats": 300
+                        },
+                        "seat_number": 3,
+                        "status": "booked",
+                        "created_at": "2025-10-06T12:10:00.123456Z"
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        200: OpenApiResponse(
+            response=BookingSerializer,
+            description="Existing cancelled booking re-booked",
+            examples=[
+                OpenApiExample(
+                    name="Rebook Cancelled Seat",
+                    value={
+                        "id": 6,
+                        "user": "tabsheer",
+                        "show": {
+                            "id": 1,
+                            "movie": {
+                                "id": 1,
+                                "title": "Godfather",
+                                "duration_minutes": 121
+                            },
+                            "screen_name": "PVR Cinemas",
+                            "date_time": "2025-10-05T14:30:00Z",
+                            "total_seats": 300
+                        },
+                        "seat_number": 2,
+                        "status": "booked",
+                        "created_at": "2025-10-06T12:15:00.654321Z"
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        400: OpenApiResponse(
+            response=GenericError,
+            description="Invalid seat number",
+            examples=[
+                OpenApiExample(
+                    name="Bad Seat Number",
+                    value={"message": "Seat number should be between 1 and 300"},
+                    response_only=True
+                )
+            ]
+        ),
+        403: OpenApiResponse(
+            response=GenericError,
+            description="Seat already occupied",
+            examples=[
+                OpenApiExample(
+                    name="Forbidden",
+                    value={"message": "Seat is already occupied"},
+                    response_only=True
+                )
+            ]
+        ),
+        404: OpenApiResponse(
+            response=GenericError,
+            description="Show not found",
+            examples=[
+                OpenApiExample(
+                    name="Not Found",
+                    value={"message": "Show not found"},
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication error",
+            examples=[
+                OpenApiExample(
+                    name="Unauthorized - Missing Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Unauthorized - Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def book_seat(request, show_id):
@@ -178,7 +297,91 @@ def book_seat(request, show_id):
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+# -------------------------------
+# Bookings Endpoints
+# -------------------------------
+@extend_schema(
+    methods=['POST'],
+    description="Cancel a booking. Only the user who booked can cancel.",
+    responses={
+        200: OpenApiResponse(
+            response=BookingSerializer,
+            description="Booking cancelled successfully",
+            examples=[
+                OpenApiExample(
+                    name="Cancelled Booking",
+                    value={
+                        "id": 6,
+                        "user": "tabsheer",
+                        "show": {
+                            "id": 1,
+                            "movie": {
+                                "id": 1,
+                                "title": "Godfather",
+                                "duration_minutes": 121
+                            },
+                            "screen_name": "PVR Cinemas",
+                            "date_time": "2025-10-05T14:30:00Z",
+                            "total_seats": 300
+                        },
+                        "seat_number": 2,
+                        "status": "cancelled",
+                        "created_at": "2025-10-06T11:58:56.347252Z"
+                    },
+                    response_only=True
+                )
+            ]
+        ),
+        403: OpenApiResponse(
+            response=GenericError,
+            description="You are not authorized to perform this action",
+            examples=[
+                OpenApiExample(
+                    name="Forbidden",
+                    value={"message": "You are not authorized to perform this action"},
+                    response_only=True
+                )
+            ]
+        ),
+        404: OpenApiResponse(
+            response=GenericError,
+            description="Booking not found",
+            examples=[
+                OpenApiExample(
+                    name="Booking Not Found",
+                    value={"message": "You can't cancel seat which is not been booked"},
+                    response_only=True
+                )
+            ]
+        ),
+        401: OpenApiResponse(
+            response=AuthErrorSerializer,
+            description="Authentication error",
+            examples=[
+                OpenApiExample(
+                    name="Unauthorized - Missing Token",
+                    value={"detail": "Authentication credentials were not provided."},
+                    response_only=True
+                ),
+                OpenApiExample(
+                    name="Unauthorized - Invalid Token",
+                    value={
+                        "detail": "Given token not valid for any token type",
+                        "code": "token_not_valid",
+                        "messages": [
+                            {
+                                "token_class": "AccessToken",
+                                "token_type": "access",
+                                "message": "Token is invalid"
+                            }
+                        ]
+                    },
+                    response_only=True
+                )
+            ]
+        )
+    }
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def cancel_booking(request, booking_id):

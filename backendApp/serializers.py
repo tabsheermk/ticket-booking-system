@@ -39,3 +39,9 @@ class AuthErrorSerializer(serializers.Serializer):
     detail = serializers.CharField()
     code = serializers.CharField(required=False)
     messages = serializers.ListField(child=serializers.DictField(), required=False)
+
+class GenericError(serializers.Serializer):
+    message = serializers.CharField()
+
+class BookSeatRequestSerializer(serializers.Serializer):
+    seat_number = serializers.IntegerField()
